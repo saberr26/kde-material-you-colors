@@ -355,6 +355,13 @@ def main():
         default=None,
     )
 
+    parser.add_argument(
+        "--matugen",
+        action="store_true",
+        help="Use matugen to generate the color scheme",
+        default=None,
+    )
+
     # Get commandline arguments
     args = parser.parse_args()
     # Check for one shot arguments

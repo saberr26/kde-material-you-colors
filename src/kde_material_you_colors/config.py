@@ -179,6 +179,7 @@ class Configs:
             "qdbus_executable": [args.qdbus_executable, None, 3],
             "manual_fetch": [args.manual_fetch, False, 0],
             "fetch_colors": [None, False, 0],
+            "matugen": [args.matugen, False, 0],
         }
 
     def parse_conf(self):

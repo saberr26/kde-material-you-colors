@@ -23,6 +23,7 @@ def apply(config: Configs, wallpaper: WallpaperReader, dark_light):
         config.read("scheme_variant"),
         config.read("chroma_multiplier"),
         config.read("tone_multiplier"),
+        False,
     )
 
     if material_colors is None:
@@ -90,6 +91,14 @@ def apply(config: Configs, wallpaper: WallpaperReader, dark_light):
             use_pywal=config.read("pywal"),
             pywal_light=config.read("pywal_light"),
             schemes=schemes,
+            dark_light=dark_light,
+        )
+
+    if config.read("matugen"):
+        pywal_utils.apply_matugen_schemes(
+            wallpaper_source=wallpaper.source,
+            light=config.read("light"),
+            pywal_light=config.read("pywal_light"),
             dark_light=dark_light,
         )
     if needs_kwin_reload is True:

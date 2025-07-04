@@ -1,6 +1,7 @@
 import logging
 import os
 import json
+import subprocess
 from PIL import Image
 
 from materialyoucolor.hct import Hct
@@ -158,7 +159,7 @@ def themeFromSourceColor(seed_color, scheme_variant=5, chroma_mult=1, tone_mult=
 
 
 def get_material_you_colors(
-    wallpaper_data, ncolor, source_type, scheme_variant, chroma_mult, tone_mult
+    wallpaper_data, ncolor, source_type, scheme_variant, chroma_mult, tone_mult, matugen
 ):
     """Get material you colors from wallpaper or hex color using material-color-utility
 
@@ -229,12 +230,67 @@ def get_material_you_colors(
         return None
 
 
+def get_matugen_colors(wallpaper_path):
+    try:
+        result = subprocess.run(['matugen', '-j', 'hex', 'image', wallpaper_path], capture_output=True, text=True, check=True)
+        matugen_colors = json.loads(result.stdout)
+
+        # Convert palette keys from strings to integers and add tone mapping
+        def convert_palette(palette):
+            base_palette = {int(k): v for k, v in palette.items()}
+            available_tones = sorted(base_palette.keys())
+
+            # Create a complete palette by mapping missing tones to closest available ones
+            full_palette = {}
+            for tone in range(0, 101):
+                if tone in base_palette:
+                    full_palette[tone] = base_palette[tone]
+                else:
+                    # Find closest available tone
+                    closest = min(available_tones, key=lambda x: abs(x - tone))
+                    full_palette[tone] = base_palette[closest]
+
+            return full_palette
+
+        # Convert snake_case keys to camelCase
+        def snake_to_camel(snake_str):
+            parts = snake_str.split('_')
+            return parts[0] + ''.join(word.capitalize() for word in parts[1:])
+
+        def convert_color_scheme(scheme):
+            return {snake_to_camel(k): v for k, v in scheme.items()}
+
+        return {
+            "schemes": {
+                "light": convert_color_scheme(matugen_colors["colors"]["light"]),
+                "dark": convert_color_scheme(matugen_colors["colors"]["dark"]),
+            },
+            "palettes": {
+                "primary": convert_palette(matugen_colors["palettes"]["primary"]),
+                "secondary": convert_palette(matugen_colors["palettes"]["secondary"]),
+                "tertiary": convert_palette(matugen_colors["palettes"]["tertiary"]),
+                "neutral": convert_palette(matugen_colors["palettes"]["neutral"]),
+                "neutralVariant": convert_palette(matugen_colors["palettes"]["neutral_variant"]),
+                "error": convert_palette(matugen_colors["palettes"]["error"]),
+            },
+            "custom": {},
+            "seed": {
+                "index": 0,
+                "color": matugen_colors["colors"]["light"]["source_color"],
+            },
+            "best": [matugen_colors["colors"]["light"]["source_color"]],
+        }
+    except (subprocess.CalledProcessError, FileNotFoundError, json.JSONDecodeError) as e:
+        print(f"Error running matugen: {e}")
+        return None
+
 def get_color_schemes(
     wallpaper: WallpaperReader,
     ncolor=None,
     scheme_variant=5,
     chroma_mult=1.0,
     tone_mult=1.0,
+    matugen=False,
 ):
     """Display best colors, allow to select alternative color,
     and make and apply color schemes for dark and light mode
@@ -248,6 +304,8 @@ def get_color_schemes(
     """
     if wallpaper is None:
         return
+    if matugen:
+        return get_matugen_colors(wallpaper.source)
     materialYouColors = None
     wallpaper_type = wallpaper.type
     wallpaper_data = wallpaper.source
@@ -264,6 +322,7 @@ def get_color_schemes(
             scheme_variant,
             chroma_mult,
             tone_mult,
+            matugen,
         )
 
     elif wallpaper_type == "color" and wallpaper_data:
@@ -275,6 +334,7 @@ def get_color_schemes(
             scheme_variant,
             chroma_mult,
             tone_mult,
+            matugen,
         )
 
     if materialYouColors is not None:

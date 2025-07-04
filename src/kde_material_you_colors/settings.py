@@ -8,7 +8,36 @@ import shutil
 import sysconfig
 from kde_material_you_colors.utils.utils import find_executable
 
-__version__ = importlib.metadata.version("kde_material_you_colors")
+def _get_version():
+    """Get version from package metadata or pyproject.toml as fallback."""
+    try:
+        return importlib.metadata.version("kde_material_you_colors")
+    except importlib.metadata.PackageNotFoundError:
+        # Fallback to reading from pyproject.toml for development mode
+        try:
+            import tomllib
+        except ImportError:
+            # Python < 3.11
+            try:
+                import tomli as tomllib
+            except ImportError:
+                return "dev"
+
+        try:
+            # Get the project root directory
+            project_root = Path(__file__).parent.parent.parent
+            pyproject_path = project_root / "pyproject.toml"
+
+            if pyproject_path.exists():
+                with open(pyproject_path, "rb") as f:
+                    data = tomllib.load(f)
+                    return data.get("project", {}).get("version", "dev")
+        except Exception:
+            pass
+
+        return "dev"
+
+__version__ = _get_version()
 USERNAME = getpass.getuser()
 USER_HAS_PYWAL = importlib.util.find_spec("pywal") is not None
 HOME = str(Path.home())

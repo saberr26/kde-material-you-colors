@@ -73,3 +73,59 @@ def print_color_palette(
         rgb = hex2rgb(color)
         print(f"\033[48;2;{rgb[0]};{rgb[1]};{rgb[2]};{fg}m {color} \033[0m", end="")
     print(f"{settings.TERM_STY_RESET}")
+
+
+def apply_matugen_schemes(
+    wallpaper_source=None,
+    light=None,
+    pywal_light=None,
+    dark_light=None,
+):
+    """Run full matugen workflow using wallpaper path with matugen's own analysis"""
+    if pywal_light is not None:
+        mode = pywal_light
+    elif light is not None:
+        mode = light
+    else:
+        mode = dark_light
+
+    try:
+        import subprocess
+
+        # Build matugen command with wallpaper image
+        cmd = ['matugen']
+
+        # Add mode flag
+        if mode:
+            cmd.extend(['-m', 'light'])
+        else:
+            cmd.extend(['-m', 'dark'])
+
+        # Use image command with the wallpaper path
+        cmd.extend(['image', wallpaper_source])
+
+        logging.info("Running full matugen workflow...")
+        logging.debug(f"Matugen command: {' '.join(cmd)}")
+
+        # Run matugen with full workflow (no --dry-run, no -j flag)
+        result = subprocess.run(
+            cmd,
+            capture_output=True, text=True, check=True
+        )
+
+        logging.info("Matugen workflow completed successfully")
+        if result.stdout:
+            logging.debug(f"Matugen stdout: {result.stdout}")
+        if result.stderr:
+            logging.debug(f"Matugen stderr: {result.stderr}")
+
+    except subprocess.CalledProcessError as e:
+        logging.error(f"Matugen command failed with exit code {e.returncode}")
+        if e.stdout:
+            logging.debug(f"Matugen stdout: {e.stdout}")
+        if e.stderr:
+            logging.debug(f"Matugen stderr: {e.stderr}")
+    except FileNotFoundError:
+        logging.warning("Matugen not found, skipping matugen workflow")
+    except Exception as e:
+        logging.exception(f"Failed running matugen workflow: {e}")
